@@ -1056,6 +1056,50 @@ func BcsDeserializeModule(input []byte) (Module, error) {
 	return obj, err
 }
 
+type ModuleId struct {
+	Address AccountAddress
+	Name Identifier
+}
+
+func (obj *ModuleId) Serialize(serializer serde.Serializer) error {
+	if err := serializer.IncreaseContainerDepth(); err != nil { return err }
+	if err := obj.Address.Serialize(serializer); err != nil { return err }
+	if err := obj.Name.Serialize(serializer); err != nil { return err }
+	serializer.DecreaseContainerDepth()
+	return nil
+}
+
+func (obj *ModuleId) BcsSerialize() ([]byte, error) {
+	if obj == nil {
+		return nil, fmt.Errorf("Cannot serialize null object")
+	}
+	serializer := bcs.NewSerializer();
+	if err := obj.Serialize(serializer); err != nil { return nil, err }
+	return serializer.GetBytes(), nil
+}
+
+func DeserializeModuleId(deserializer serde.Deserializer) (ModuleId, error) {
+	var obj ModuleId
+	if err := deserializer.IncreaseContainerDepth(); err != nil { return obj, err }
+	if val, err := DeserializeAccountAddress(deserializer); err == nil { obj.Address = val } else { return obj, err }
+	if val, err := DeserializeIdentifier(deserializer); err == nil { obj.Name = val } else { return obj, err }
+	deserializer.DecreaseContainerDepth()
+	return obj, nil
+}
+
+func BcsDeserializeModuleId(input []byte) (ModuleId, error) {
+	if input == nil {
+		var obj ModuleId
+		return obj, fmt.Errorf("Cannot deserialize null array")
+	}
+	deserializer := bcs.NewDeserializer(input);
+	obj, err := DeserializeModuleId(deserializer)
+	if err == nil && deserializer.GetBufferOffset() < uint64(len(input)) {
+		return obj, fmt.Errorf("Some input bytes were not read")
+	}
+	return obj, err
+}
+
 type MultiEd25519PublicKey []byte
 
 func (obj *MultiEd25519PublicKey) Serialize(serializer serde.Serializer) error {
@@ -1517,6 +1561,56 @@ func BcsDeserializeScript(input []byte) (Script, error) {
 	}
 	deserializer := bcs.NewDeserializer(input);
 	obj, err := DeserializeScript(deserializer)
+	if err == nil && deserializer.GetBufferOffset() < uint64(len(input)) {
+		return obj, fmt.Errorf("Some input bytes were not read")
+	}
+	return obj, err
+}
+
+type ScriptFunction struct {
+	Module ModuleId
+	Function Identifier
+	TyArgs []TypeTag
+	Args [][]byte
+}
+
+func (obj *ScriptFunction) Serialize(serializer serde.Serializer) error {
+	if err := serializer.IncreaseContainerDepth(); err != nil { return err }
+	if err := obj.Module.Serialize(serializer); err != nil { return err }
+	if err := obj.Function.Serialize(serializer); err != nil { return err }
+	if err := serialize_vector_TypeTag(obj.TyArgs, serializer); err != nil { return err }
+	if err := serialize_vector_bytes(obj.Args, serializer); err != nil { return err }
+	serializer.DecreaseContainerDepth()
+	return nil
+}
+
+func (obj *ScriptFunction) BcsSerialize() ([]byte, error) {
+	if obj == nil {
+		return nil, fmt.Errorf("Cannot serialize null object")
+	}
+	serializer := bcs.NewSerializer();
+	if err := obj.Serialize(serializer); err != nil { return nil, err }
+	return serializer.GetBytes(), nil
+}
+
+func DeserializeScriptFunction(deserializer serde.Deserializer) (ScriptFunction, error) {
+	var obj ScriptFunction
+	if err := deserializer.IncreaseContainerDepth(); err != nil { return obj, err }
+	if val, err := DeserializeModuleId(deserializer); err == nil { obj.Module = val } else { return obj, err }
+	if val, err := DeserializeIdentifier(deserializer); err == nil { obj.Function = val } else { return obj, err }
+	if val, err := deserialize_vector_TypeTag(deserializer); err == nil { obj.TyArgs = val } else { return obj, err }
+	if val, err := deserialize_vector_bytes(deserializer); err == nil { obj.Args = val } else { return obj, err }
+	deserializer.DecreaseContainerDepth()
+	return obj, nil
+}
+
+func BcsDeserializeScriptFunction(input []byte) (ScriptFunction, error) {
+	if input == nil {
+		var obj ScriptFunction
+		return obj, fmt.Errorf("Cannot deserialize null array")
+	}
+	deserializer := bcs.NewDeserializer(input);
+	obj, err := DeserializeScriptFunction(deserializer)
 	if err == nil && deserializer.GetBufferOffset() < uint64(len(input)) {
 		return obj, fmt.Errorf("Some input bytes were not read")
 	}
@@ -2150,6 +2244,13 @@ func DeserializeTransactionPayload(deserializer serde.Deserializer) (Transaction
 			return nil, err
 		}
 
+	case 3:
+		if val, err := load_TransactionPayload__ScriptFunction(deserializer); err == nil {
+			return &val, nil
+		} else {
+			return nil, err
+		}
+
 	default:
 		return nil, fmt.Errorf("Unknown variant index for TransactionPayload: %d", index)
 	}
@@ -2257,6 +2358,37 @@ func load_TransactionPayload__Module(deserializer serde.Deserializer) (Transacti
 	var obj TransactionPayload__Module
 	if err := deserializer.IncreaseContainerDepth(); err != nil { return obj, err }
 	if val, err := DeserializeModule(deserializer); err == nil { obj.Value = val } else { return obj, err }
+	deserializer.DecreaseContainerDepth()
+	return obj, nil
+}
+
+type TransactionPayload__ScriptFunction struct {
+	Value ScriptFunction
+}
+
+func (*TransactionPayload__ScriptFunction) isTransactionPayload() {}
+
+func (obj *TransactionPayload__ScriptFunction) Serialize(serializer serde.Serializer) error {
+	if err := serializer.IncreaseContainerDepth(); err != nil { return err }
+	serializer.SerializeVariantIndex(3)
+	if err := obj.Value.Serialize(serializer); err != nil { return err }
+	serializer.DecreaseContainerDepth()
+	return nil
+}
+
+func (obj *TransactionPayload__ScriptFunction) BcsSerialize() ([]byte, error) {
+	if obj == nil {
+		return nil, fmt.Errorf("Cannot serialize null object")
+	}
+	serializer := bcs.NewSerializer();
+	if err := obj.Serialize(serializer); err != nil { return nil, err }
+	return serializer.GetBytes(), nil
+}
+
+func load_TransactionPayload__ScriptFunction(deserializer serde.Deserializer) (TransactionPayload__ScriptFunction, error) {
+	var obj TransactionPayload__ScriptFunction
+	if err := deserializer.IncreaseContainerDepth(); err != nil { return obj, err }
+	if val, err := DeserializeScriptFunction(deserializer); err == nil { obj.Value = val } else { return obj, err }
 	deserializer.DecreaseContainerDepth()
 	return obj, nil
 }
@@ -3176,6 +3308,24 @@ func deserialize_vector_TypeTag(deserializer serde.Deserializer) ([]TypeTag, err
 	obj := make([]TypeTag, length)
 	for i := range(obj) {
 		if val, err := DeserializeTypeTag(deserializer); err == nil { obj[i] = val } else { return nil, err }
+	}
+	return obj, nil
+}
+
+func serialize_vector_bytes(value [][]byte, serializer serde.Serializer) error {
+	if err := serializer.SerializeLen(uint64(len(value))); err != nil { return err }
+	for _, item := range(value) {
+		if err := serializer.SerializeBytes(item); err != nil { return err }
+	}
+	return nil
+}
+
+func deserialize_vector_bytes(deserializer serde.Deserializer) ([][]byte, error) {
+	length, err := deserializer.DeserializeLen()
+	if err != nil { return nil, err }
+	obj := make([][]byte, length)
+	for i := range(obj) {
+		if val, err := deserializer.DeserializeBytes(); err == nil { obj[i] = val } else { return nil, err }
 	}
 	return obj, nil
 }
